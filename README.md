@@ -68,7 +68,8 @@
 k6PermanceTesting/
 ├── config/                          # 配置管理
 │   ├── environments.js              # 环境配置（QA1/QA2/Prod）
-│   └── users.js                     # 用户配置（Admin/Member）
+│   ├── users.js                     # 用户配置（Admin/Member）
+│   └── testData.js                  # 测试数据配置
 │
 ├── helpers/                         # Helper 层（POM 模式）
 │   ├── auth.js                      # 认证 Helper（OAuth 2.0）
@@ -77,15 +78,19 @@ k6PermanceTesting/
 │
 ├── utils/                           # 工具函数
 │   ├── dataGenerator.js             # 测试数据生成器
-│   └── reportGenerator.js           # 报告生成器（可选）
+│   ├── dateUtils.js                 # 日期处理工具
+│   └── reportGenerator.js           # 报告生成器
 │
 ├── scripts/                         # 快速测试脚本
 │   ├── createProject.js             # 单次项目创建测试
-│   └── createProjectAndSpec.js      # 项目+规格创建测试
+│   ├── createProjectAndSpec.js      # 项目+规格创建测试
+│   ├── createProjectLegacy.js       # Legacy 项目创建（硬编码配置）
+│   └── createProjectAndSpecLegacy.js # Legacy 项目+规格创建（硬编码配置）
 │
 ├── performanceTests/                # 性能测试套件
 │   ├── load/                        # 负载测试
-│   │   └── createProjectAndSpecLoadTest.js
+│   │   ├── authenticationLoadTest.js        # OAuth 认证负载测试
+│   │   └── createProjectAndSpecLoadTest.js  # 项目创建负载测试
 │   ├── stress/                      # 压力测试
 │   │   └── createProjectAndSpecStressTest.js
 │   ├── spike/                       # 峰值测试
@@ -95,7 +100,11 @@ k6PermanceTesting/
 │
 ├── results/                         # 测试报告输出目录
 │   ├── *.html                       # HTML 报告
-│   └── *.json                       # JSON 数据
+│   ├── *.json                       # JSON 数据
+│   └── .gitkeep                     # Git 目录占位符
+│
+├── examples/                        # 示例和学习资源
+│   └── k6LifecycleDemo.js           # k6 生命周期演示
 │
 ├── grafana/                         # Grafana 配置
 │   ├── dashboards/
@@ -110,6 +119,11 @@ k6PermanceTesting/
 ├── start-monitoring.bat             # 启动监控栈（Windows）
 ├── stop-monitoring.bat              # 停止监控栈（Windows）
 ├── run-with-monitoring.bat          # 运行测试（带监控，Windows）
+│
+├── loginTest.js                     # 简单登录测试（开发调试用）
+├── createProjectFlow.js             # 项目创建流程测试（开发调试用）
+├── createProjectWithToken.js        # Token 方式创建项目（开发调试用）
+│
 ├── .gitignore                       # Git 忽略规则
 ├── MONITORING.md                    # 监控系统文档
 └── README.md                        # 项目文档（本文件）
@@ -164,11 +178,39 @@ k6PermanceTesting/
 
 ## 🧪 测试类型
 
+### 脚本分类说明
+
+#### 📂 scripts/ - 快速测试脚本
+用于日常开发和快速验证，适合单次执行和功能验证：
+
+- **createProject.js** - 单次项目创建测试（推荐使用，配置化）
+- **createProjectAndSpec.js** - 项目+规格创建测试（推荐使用，配置化）
+- **createProjectLegacy.js** - Legacy 版本（硬编码配置，仅供参考）
+- **createProjectAndSpecLegacy.js** - Legacy 版本（硬编码配置，仅供参考）
+
+#### 📂 performanceTests/ - 性能测试套件
+用于系统性能评估和压力测试，包含完整的负载配置和性能阈值：
+
+- **load/** - 负载测试（验证预期负载下的性能）
+- **stress/** - 压力测试（找到系统性能极限）
+- **spike/** - 峰值测试（突发流量应对能力）
+- **soak/** - 浸泡测试（长时间稳定性测试）
+
+#### 📂 根目录文件 - 开发调试脚本
+用于开发过程中的调试和概念验证（不建议生产使用）：
+
+- **loginTest.js** - 简单登录功能测试
+- **createProjectFlow.js** - 项目创建流程验证
+- **createProjectWithToken.js** - Token 认证方式测试
+
+---
+
 ### 1. 烟雾测试 (Smoke Test)
 
 **用途**: 快速验证系统基本功能
 
 ```bash
+# 推荐：使用配置化脚本
 k6 run scripts/createProject.js
 k6 run scripts/createProjectAndSpec.js
 ```
@@ -178,11 +220,30 @@ k6 run scripts/createProjectAndSpec.js
 - 迭代次数: 1
 - 预期时长: < 10 秒
 
+**报告输出**:
+- HTML: `results/create-project-report.html`
+- JSON: `results/create-project-data.json`
+
 ---
 
 ### 2. 负载测试 (Load Test)
 
 **用途**: 验证系统在预期负载下的性能
+
+#### 2.1 OAuth 认证负载测试
+
+```bash
+k6 run performanceTests/load/authenticationLoadTest.js
+```
+
+**用途**: 测试 OAuth 认证接口在并发情况下的性能
+
+**配置**:
+- 阶段 1: 0 → 5 VUs (30 秒爬坡)
+- 阶段 2: 5 VUs (1 分钟稳定)
+- 阶段 3: 5 → 0 VUs (30 秒下降)
+
+#### 2.2 项目创建负载测试
 
 ```bash
 k6 run performanceTests/load/createProjectAndSpecLoadTest.js
@@ -723,4 +784,4 @@ export default function () {
 
 **Created with ❤️ for Performance Testing Excellence**
 
-*Last Updated: 2025-11-27*
+*Last Updated: 2025-12-02*
